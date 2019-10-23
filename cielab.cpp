@@ -5,11 +5,10 @@
 using namespace cv;
 using namespace std;
 
-Image<Vec3f> convertBGRToLab(Image<Vec3b> imageBGR){
+Image<Vec3b> convertBGRToLab(Image<Vec3b> imageBGR){
     int w = imageBGR.width();
     int h = imageBGR.height();
-    Image<Vec3f> imageLab(w, h);
-    imageBGR.convertTo(imageLab, COLOR_BGR2Lab);
-    imshow("testLab", imageLab);
+    Image<Vec3b> imageLab(w, h);
+    cvtColor(imageBGR, imageLab, COLOR_BGR2Lab);
     return imageLab;
 }
