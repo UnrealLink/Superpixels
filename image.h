@@ -22,6 +22,7 @@ struct pixel_type<Vec3b>
 {
 	static const int value = CV_8UC3;
 };
+template <>
 struct pixel_type<Vec3f>
 {
 	static const int value = CV_32FC3;

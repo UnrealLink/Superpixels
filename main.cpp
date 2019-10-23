@@ -10,6 +10,8 @@ int main(int argc, char** argv)
 {
 	Image<Vec3b> image = (Image<Vec3b>)imread("../loic.jpg");
 	imshow("I1", image);
+    Image<Vec3f> imageLab = convertBGRToLab(image);
+    imshow("Lab", imageLab);
 
 	waitKey(0);
 	return 0;

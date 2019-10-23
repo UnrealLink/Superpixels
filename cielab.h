@@ -2,4 +2,4 @@
 
 #include "image.h"
 
-Image<Vec3f> convertBGRToLAB(Image<Vec3b> imageBGR);
+Image<Vec3f> convertBGRToLab(Image<Vec3b> imageBGR);

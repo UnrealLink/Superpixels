@@ -5,11 +5,7 @@
 using namespace cv;
 using namespace std;
 
-Vec3f convertBGRToXYZpixel(Vec3b){
-
-}
-
-Image<Vec3f> convertBGRToLAB(Image<Vec3b> imageBGR){
+Image<Vec3f> convertBGRToLab(Image<Vec3b> imageBGR){
     int w = imageBGR.width();
     int h = imageBGR.height();
     Image<Vec3f> imageLab(w, h);
