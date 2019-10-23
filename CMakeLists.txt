@@ -6,5 +6,5 @@ INCLUDE_DIRECTORIES(${OpenCV_INCLUDE_DIRS})
 
 PROJECT(SLIC)
 
-ADD_EXECUTABLE(GC  image.cpp image.h)
+ADD_EXECUTABLE(GC main.cpp cielab.cpp cielab.h image.cpp image.h)
 TARGET_LINK_LIBRARIES(GC ${OpenCV_LIBS})
