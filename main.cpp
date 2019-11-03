@@ -9,11 +9,12 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-	Image<Vec3b> image = (Image<Vec3b>)imread("../loic.jpg");
+	Image<Vec3b> image = (Image<Vec3b>)imread("../data/fruits.jpg");
+	std::cout << "Dimension of image : " << image.width() << "," << image.height() << std::endl;
 	imshow("I1", image);
     Image<Vec3b> imageLab = convertBGRToLab(image);
-    imshow("Lab", imageLab);
-    Slic slic(imageLab, 10);
+    Slic slic(imageLab, 50);
+    slic.showSuperpixels();
 
 	waitKey(0);
 	return 0;

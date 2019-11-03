@@ -12,6 +12,8 @@ class Slic{
         Slic(Image<Vec3b> _imageLab, int _k, float _m=10);
         ~Slic(){};
 
+        void showSuperpixels();
+
     private:
         Image<Vec3b> imageLab;
         int k;
