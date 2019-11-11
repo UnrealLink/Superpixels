@@ -65,9 +65,11 @@ void moveToSeeds(vector<Centroid>& centroids, const Image<Vec3b>& imageLab, int 
     int w = imageLab.width();
     int h = imageLab.height();
     Image<Vec3b> imageBGR(w, h);
+    Image<uchar> imageGrayInter(w, h);
     Image<float> imageGray(w, h);
     cvtColor(imageLab, imageBGR, COLOR_Lab2BGR);
-    cvtColor(imageBGR, imageGray, COLOR_BGR2GRAY);
+    cvtColor(imageBGR, imageGrayInter, COLOR_BGR2GRAY);
+    imageGrayInter.convertTo(imageGray, CV_32F);
 
     Image<float> G = squareGradient(imageGray);
 
