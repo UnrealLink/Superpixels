@@ -70,14 +70,8 @@ void moveToSeeds(vector<Centroid>& centroids, const Image<Vec3b>& imageLab, int 
     // compute square gradient and move centroids to seed locations with the lowest gradient in a nxn neighborhood
     int w = imageLab.width();
     int h = imageLab.height();
+
     Image<Vec3b> imageBGR(w, h);
-
-    Image<uchar> I(w, h);
-    Image<float> imageGray(w, h);
-    cvtColor(imageLab, imageBGR, COLOR_Lab2BGR);
-    cvtColor(imageBGR, I, COLOR_BGR2GRAY);
-    I.convertTo(imageGray, CV_32F);
-
     Image<uchar> imageGrayInter(w, h);
     Image<float> imageGray(w, h);
     cvtColor(imageLab, imageBGR, COLOR_Lab2BGR);
@@ -227,18 +221,16 @@ void enforceConnectivity(Image<int>& superpixels, const vector<Centroid>& centro
     for (int i = 0; i < k; i++) {
         seeds[i] = Point(0, 0);
     }
-    vector<queue<Point> > clusters(k);
+    vector<queue<Point> > clusters(k+1);
 
     for (int x = 0; x < w; x++) {
         for (int y = 0; y < h; y++) {
-            if (superpixels(x, y) == 0) {
-                continue;
-            }
             // add point at coordinates (x, y) to corresponding cluster
-            int j = superpixels(x, y) - 1;
-            clusters[j].push(Point(x, y));
+            clusters[superpixels(x, y)].push(Point(x, y));
+            if (superpixels(x, y) == 0) continue;
 
             // check if it is closer to the centroid than the current seed of the cluster
+            int j = superpixels(x, y) - 1;
             float Ds1 = cieLabDist(Point(x, y), imageLab, j, centroids, S, m);
             float Ds2 = cieLabDist(seeds[j], imageLab, j, centroids, S, m);
             if (Ds1 < Ds2) {
@@ -279,9 +271,9 @@ void enforceConnectivity(Image<int>& superpixels, const vector<Centroid>& centro
     imshow("seen", 255 * seen);
 
     // relabel remaining disjoint segments
-    int n_remaining = k;
+    int n_remaining = k+1;
     while (n_remaining > 0) {
-        for (int i = 0; i < k; i++) {
+        for (int i = 0; i < k+1; i++) {
             queue<Point> residual;
             while (!clusters[i].empty()) {
                 int x = clusters[i].front().x; int y = clusters[i].front().y;
@@ -307,11 +299,14 @@ void enforceConnectivity(Image<int>& superpixels, const vector<Centroid>& centro
                 }
                 else {
                     int new_label = superpixels(neighbours.front());
-                    float min_dist = cieLabDist(neighbours.front(), imageLab, i, centroids, S, m);
+                    int j = new_label - 1;
+                    float min_dist = cieLabDist(neighbours.front(), imageLab, j, centroids, S, m);
                     neighbours.pop();
                     while (!neighbours.empty()) {
-                        float dist = cieLabDist(neighbours.front(), imageLab, i, centroids, S, m);
-                        new_label = (dist < min_dist) ? superpixels(neighbours.front()) : new_label;
+                        int cur_label = superpixels(neighbours.front());
+                        int j = cur_label - 1;
+                        float cur_dist = cieLabDist(neighbours.front(), imageLab, j, centroids, S, m);
+                        new_label = (cur_dist < min_dist) ? cur_label : new_label;
                         neighbours.pop();
                     }
                     superpixels(x, y) = new_label;

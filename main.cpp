@@ -19,7 +19,7 @@ int main(int argc, char** argv)
 	std::cout << "Dimension of image : " << image.width() << "," << image.height() << std::endl;
 	imshow("I1", image);
     Image<Vec3b> imageLab = convertBGRToLab(image);
-    Slic slic(imageLab, 500);
+    Slic slic(imageLab, 1000);
     slic.showSuperpixels();
 
 	waitKey(0);
