@@ -2,9 +2,15 @@
 #include <math.h>
 #include <iostream>
 #include <opencv2/highgui/highgui.hpp>
+#include <queue>
 
 using namespace std;
 using namespace cv;
+
+/*
+    Initialize centroids by placing them in a roughly uniform manner in the image,
+    then move them to the point in their 3x3 neighborhood where the squared gradient is the lowest.
+*/
 
 vector<Centroid> initialize(const Image<Vec3b>& imageLab, int k){
     vector<Centroid> centroids(k);
@@ -65,9 +71,11 @@ void moveToSeeds(vector<Centroid>& centroids, const Image<Vec3b>& imageLab, int 
     int w = imageLab.width();
     int h = imageLab.height();
     Image<Vec3b> imageBGR(w, h);
+    Image<uchar> I(w, h);
     Image<float> imageGray(w, h);
     cvtColor(imageLab, imageBGR, COLOR_Lab2BGR);
-    cvtColor(imageBGR, imageGray, COLOR_BGR2GRAY);
+    cvtColor(imageBGR, I, COLOR_BGR2GRAY);
+    I.convertTo(imageGray, CV_32F);
 
     Image<float> G = squareGradient(imageGray);
 
@@ -97,13 +105,28 @@ void moveToSeeds(vector<Centroid>& centroids, const Image<Vec3b>& imageLab, int 
     }
 }
 
-void assignClusters(Image<uchar>& superpixels, const Image<Vec3b>& imageLab, const vector<Centroid>& centroids, float m) {
+/*
+    At each iteration of the algorithm, update the centroids positions
+    and compute the Voronoï partition of the image with respect to the centroids in the Labxy space.
+*/
+
+float cieLabDist(Point p, const Image<Vec3b>& imageLab, int i, const vector<Centroid>& centroids, float S, float m) {
+    float d_lab = sqrt((centroids[i].L - imageLab(p)[0])*(centroids[i].L - imageLab(p)[0])
+                        + (centroids[i].a - imageLab(p)[1])*(centroids[i].a - imageLab(p)[1])
+                        + (centroids[i].b - imageLab(p)[2])*(centroids[i].b - imageLab(p)[2]));
+    float d_xy = sqrt((centroids[i].x - p.x)*(centroids[i].x - p.x) + (centroids[i].y - p.y)*(centroids[i].y - p.y));
+    float Ds = d_lab + (m / S)*d_xy;
+    return Ds;
+}
+
+void assignClusters(Image<int>& superpixels, const Image<Vec3b>& imageLab, const vector<Centroid>& centroids, float m) {
     // assign best matching pixels from a 2Sx2S neighborhood around each cluster center according to the distance measure
     int w = imageLab.width();
     int h = imageLab.height();
-    float S = sqrt(w * h / centroids.size());
+    int k = centroids.size();
+    float S = sqrt(w * h / k);
 
-    for (int i = 0; i < centroids.size(); i++) {
+    for (int i = 0; i < k; i++) {
         int label = i+1;
         int x1 = max(0, (int)floor(centroids[i].x - S));
         int x2 = min(w, (int)floor(centroids[i].x + S + 1));
@@ -117,18 +140,8 @@ void assignClusters(Image<uchar>& superpixels, const Image<Vec3b>& imageLab, con
                 }
                 else {
                     int j = superpixels(x, y) - 1;
-                    float d_lab1 = sqrt((centroids[j].L - imageLab(x, y)[0])*(centroids[j].L - imageLab(x, y)[0])
-                                    + (centroids[j].a - imageLab(x, y)[1])*(centroids[j].a - imageLab(x, y)[1])
-                                    + (centroids[j].b - imageLab(x, y)[2])*(centroids[j].b - imageLab(x, y)[2]));
-                    float d_xy1 = sqrt((centroids[j].x - x)*(centroids[j].x - x) + (centroids[j].y - y)*(centroids[j].y - y));
-                    float Ds1 = d_lab1 + (m / S)*d_xy1;
-
-                    float d_lab2 = sqrt((centroids[i].L - imageLab(x, y)[0])*(centroids[i].L - imageLab(x, y)[0])
-                                    + (centroids[i].a - imageLab(x, y)[1])*(centroids[i].a - imageLab(x, y)[1])
-                                    + (centroids[i].b - imageLab(x, y)[2])*(centroids[i].b - imageLab(x, y)[2]));
-                    float d_xy2 = sqrt((centroids[i].x - x)*(centroids[i].x - x) + (centroids[i].y - y)*(centroids[i].y - y));
-                    float Ds2 = d_lab2 + (m / S)*d_xy2;
-
+                    float Ds1 = cieLabDist(Point(x, y), imageLab, j, centroids, S, m);
+                    float Ds2 = cieLabDist(Point(x, y), imageLab, i, centroids, S, m);
                     if (Ds2 < Ds1) {
                         superpixels(x, y) = label;
                     }
@@ -138,12 +151,14 @@ void assignClusters(Image<uchar>& superpixels, const Image<Vec3b>& imageLab, con
     }
 }
 
-float moveCentroids(const Image<uchar>& superpixels, const Image<Vec3b>& imageLab, vector<Centroid>& centroids) {
+float moveCentroids(const Image<int>& superpixels, const Image<Vec3b>& imageLab, vector<Centroid>& centroids) {
     float residual_error = 0.;
 
     // compute new cluster centers and residual error
     int w = imageLab.width();
     int h = imageLab.height();
+    int k = centroids.size();
+
     int *cluster_sizes = new int[centroids.size()];
     for (int i = 0; i < centroids.size(); i++) {
         cluster_sizes[i] = 0;
@@ -152,9 +167,7 @@ float moveCentroids(const Image<uchar>& superpixels, const Image<Vec3b>& imageLa
 
     for (int x = 0; x < w; x++) {
         for (int y = 0; y < h; y++) {
-            if (superpixels(x, y) == 0) {
-                continue;
-            }
+            if (superpixels(x, y) == 0) continue;
 
             int i = superpixels(x, y) - 1;
             cluster_sizes[i]++;
@@ -166,7 +179,7 @@ float moveCentroids(const Image<uchar>& superpixels, const Image<Vec3b>& imageLa
         }
     }
 
-    for (int i = 0; i < centroids.size(); i++) {
+    for (int i = 0; i < k; i++) {
         if (cluster_sizes[i] == 0) {
             new_centroids[i] = centroids[i];
         }
@@ -186,33 +199,149 @@ float moveCentroids(const Image<uchar>& superpixels, const Image<Vec3b>& imageLa
     }
 
     centroids = new_centroids;
-
     return residual_error;
 }
 
-void enforceConnectivity(Image<uchar>& superpixels, const vector<Centroid>& centroids) {
+/*
+    A few pixels may remain unconnected to the superpixels,
+    here we explicitely enforce connectivity.
+*/
+
+void enforceConnectivity(Image<int>& superpixels, const vector<Centroid>& centroids, const Image<Vec3b>& imageLab, float m) {
     // relabel disjoint segments to enforce connectivity of superpixels
+
+    // go through image to get, for each centroid, the whole cluster and its seed (the point closer to the centroid)
+    int w = superpixels.width();
+    int h = superpixels.height();
+    int k = centroids.size();
+    float S = sqrt(w * h / k);
+
+    vector<Point> seeds(k);
+    for (int i = 0; i < k; i++) {
+        seeds[i] = Point(0, 0);
+    }
+    vector<queue<Point> > clusters(k);
+
+    for (int x = 0; x < w; x++) {
+        for (int y = 0; y < h; y++) {
+            if (superpixels(x, y) == 0) {
+                continue;
+            }
+            // add point at coordinates (x, y) to corresponding cluster
+            int j = superpixels(x, y) - 1;
+            clusters[j].push(Point(x, y));
+
+            // check if it is closer to the centroid than the current seed of the cluster
+            float Ds1 = cieLabDist(Point(x, y), imageLab, j, centroids, S, m);
+            float Ds2 = cieLabDist(seeds[j], imageLab, j, centroids, S, m);
+            if (Ds1 < Ds2) {
+                seeds[j] = Point(x, y);
+            }
+        }
+    }
+
+    // perform BFS on each cluster, starting at its seed
+    Image<uchar> seen(w, h);
+    seen.setTo(0);
+    for (int i = 1; i < k+1; i++) {
+        queue<Point> Q;
+        Q.push(seeds[i-1]);
+        int x = seeds[i-1].x; int y = seeds[i-1].y;
+        seen(x, y) = 1;
+        while (!Q.empty()) {
+            int x = Q.front().x; int y = Q.front().y;
+            Q.pop();
+            if (x > 0 && superpixels(x-1, y) == i && !seen(x-1, y)) {
+                seen(x-1, y) = 1;
+                Q.push(Point(x-1, y));
+            }
+            if (x < (w-1) && superpixels(x+1, y) == i && !seen(x+1, y)) {
+                seen(x+1, y) = 1;
+                Q.push(Point(x+1, y));
+            }
+            if (y > 0 && superpixels(x, y-1) == i && !seen(x, y-1)) {
+                seen(x, y-1) = 1;
+                Q.push(Point(x, y-1));
+            }
+            if (y < (h-1) && superpixels(x, y+1) == i && !seen(x, y+1)) {
+                seen(x, y+1) = 1;
+                Q.push(Point(x, y+1));
+            }
+        }
+    }
+    imshow("seen", 255 * seen);
+
+    // relabel remaining disjoint segments
+    int n_remaining = k;
+    while (n_remaining > 0) {
+        for (int i = 0; i < k; i++) {
+            queue<Point> residual;
+            while (!clusters[i].empty()) {
+                int x = clusters[i].front().x; int y = clusters[i].front().y;
+                clusters[i].pop();
+                if (seen(x, y)) continue;
+
+                queue<Point> neighbours;
+                if (x > 0 && seen(x-1, y)) {
+                    neighbours.push(Point(x-1, y));
+                }
+                if (x < (w-1) && seen(x+1, y)) {
+                    neighbours.push(Point(x+1, y));
+                }
+                if (y > 0 && seen(x, y-1)) {
+                    neighbours.push(Point(x, y-1));
+                }
+                if (y < (h-1) && seen(x, y+1)) {
+                    neighbours.push(Point(x, y+1));
+                }
+
+                if (neighbours.empty()) {
+                    residual.push(Point(x, y));
+                }
+                else {
+                    int new_label = superpixels(neighbours.front());
+                    float min_dist = cieLabDist(neighbours.front(), imageLab, i, centroids, S, m);
+                    neighbours.pop();
+                    while (!neighbours.empty()) {
+                        float dist = cieLabDist(neighbours.front(), imageLab, i, centroids, S, m);
+                        new_label = (dist < min_dist) ? superpixels(neighbours.front()) : new_label;
+                        neighbours.pop();
+                    }
+                    superpixels(x, y) = new_label;
+                    seen(x, y) = 1;
+                }
+            }
+            clusters[i] = residual;
+            if (clusters[i].empty()) n_remaining--;
+        }
+    }
 }
+
+/*
+    Implementation of Slic methods.
+*/
 
 Slic::Slic(Image<Vec3b> _imageLab, int _k, float _m){
     imageLab = _imageLab;
     k = _k;
     m = _m;
+
     centroids = initialize(imageLab, k);
-    superpixels = Image<uchar>(imageLab.width(), imageLab.height());
-    superpixels.setTo(0);
-    // for (int i=0; i<k; i++){
-    //     std::cout << centroids[i].x << " " << centroids[i].y << std::endl;
-    // }
     moveToSeeds(centroids, imageLab);
+
+    superpixels = Image<int>(imageLab.width(), imageLab.height());
+    superpixels.setTo(0);
+    assignClusters(superpixels, imageLab, centroids, m);
+
     int max_iter = 10;
     float residual_error;
-    for (int i = 0; i < max_iter; i++) {
-        assignClusters(superpixels, imageLab, centroids, m);
+    for (int i = 1; i <= max_iter; i++) {
         residual_error = moveCentroids(superpixels, imageLab, centroids);
         std::cout << "Residual error at step " << i << " : " << residual_error << std::endl;
+        assignClusters(superpixels, imageLab, centroids, m);
     }
-    enforceConnectivity(superpixels, centroids);
+
+    enforceConnectivity(superpixels, centroids, imageLab, m);
 }
 
 void Slic::showSuperpixels() {

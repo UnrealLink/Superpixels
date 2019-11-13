@@ -18,6 +18,6 @@ class Slic{
         Image<Vec3b> imageLab;
         int k;
         float m;
-        Image<uchar> superpixels;
+        Image<int> superpixels;
         vector<Centroid> centroids;
 };

@@ -23,9 +23,9 @@ struct pixel_type<Vec3b>
 	static const int value = CV_8UC3;
 };
 template <>
-struct pixel_type<Vec3f>
+struct pixel_type<int>
 {
-	static const int value = CV_32FC3;
+	static const int value = CV_32S;
 };
 template <>
 struct pixel_type<float>
