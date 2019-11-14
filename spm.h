@@ -3,6 +3,7 @@
 #include "image.h"
 #include "slic.h"
 #include <vector>
+#include <list>
 
 class SuperPatchMatcher{
     public:
@@ -18,7 +19,13 @@ class SuperPatchMatcher{
         int degree;
 
         vector<int> ANNs;
+        vector<int> orderedCentroids;
+        vector<vector<int> > neighbours;
+        vector<vector<float> > neighboursAngle;
 
         void initRandomANNs();
+        void computeOrderAndNeighbours();
+        void propagate();
+        void randomSearch();
 
 };
