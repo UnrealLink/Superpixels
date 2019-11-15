@@ -111,6 +111,13 @@ void moveToSeeds(vector<Centroid>& centroids, const Image<Vec3b>& imageLab, int 
     and compute the Voronoï partition of the image with respect to the centroids in the Labxy space.
 */
 
+float cieLabDist(Centroid centroid1, Centroid centroid2){
+    float d_lab = sqrt((centroid1.L - centroid2.L)*(centroid1.L - centroid2.L)
+                        + (centroid1.a - centroid2.a)*(centroid1.a - centroid2.a)
+                        + (centroid1.b - centroid2.b])*(centroid1.b - centroid2.b));
+    return d_lab;
+}
+
 float cieLabDist(Point p, const Image<Vec3b>& imageLab, int i, const vector<Centroid>& centroids, float S, float m) {
     float d_lab = sqrt((centroids[i].L - imageLab(p)[0])*(centroids[i].L - imageLab(p)[0])
                         + (centroids[i].a - imageLab(p)[1])*(centroids[i].a - imageLab(p)[1])

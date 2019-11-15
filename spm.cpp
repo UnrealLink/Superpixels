@@ -121,14 +121,33 @@ void SuperPatchMatcher::propagate(){
     for (int i=0; i < nbSuperpixels; i++){
         current = orderedCentroids1[i];
         seen[current] = true;
-        for (int j=0; j<neighbours1[i].size();j++) {
-            int neighbour1 = neighbours1[i][j];
-            float angle1 = neighboursAngle1[i][j];
+        for (int j=0; j<neighbours1[current].size();j++) {
+            int neighbour1 = neighbours1[current][j];
+            float angle1 = neighboursAngle1[current][j];
             if (seen[neighbour1]) {
                 float minAngleDiff = atan(1)*8;
                 int idxMin = -1;
                 for (int k=0; k<neighbours2[ANNs[neighbour1]].size(); k++){
-                    
+                    if (abs(neighboursAngle2[ANNs[neighbour1]][k] - angle1) < minAngleDiff) {
+                        minAngleDiff = abs(neighboursAngle2[ANNs[neighbour1]][k] - angle1);
+                        idxMin = k;
+                    }
+                }
+                int newCandidate = neighbours2[ANNs[neighbour1]][idxMin];
+                Centroid centroid1 = superpixels1.getCentroids()[current];
+                Centroid centroidCurrentMatch = superpixels2.getCentroids()[ANNs[current]];
+                Centroid centroidNewCandidate = superpixels2.getCentroids()[newCandidate];
+                if (countMatchings[newCandidate] >= degree){
+                    float cost = 0;
+                    cost += cieLabDist(centroid1, centroidNewCandidate) - cieLabDist(centroid1, centroidCurrentMatch);
+                    cost += cieLabDist(centroid1, centroidNewCandidate) - cieLabDist(centroid1, centroidCurrentMatch);
+                    // I need a reverse ANNs table to get which superpixels from image1 are match to newCandidate
+                }
+                else {
+                    if (cieLabDist(centroid1, centroidNewCandidate) < cieLabDist(centroid1, centroidCurrentMatch)){
+                        ANNs[current] = newCandidate;
+                        countMatchings[newCandidate]++;
+                    }
                 }
             }
         }
