@@ -1,6 +1,7 @@
 #include "image.h"
 #include "cielab.h"
 #include "slic.h"
+#include "spm.h"
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
 
@@ -21,6 +22,11 @@ int main(int argc, char** argv)
     Image<Vec3b> imageLab = convertBGRToLab(image);
     Slic slic(imageLab, 1000);
     slic.showSuperpixels();
+    std::cout << "check1" << std::endl;
+    SuperPatchMatcher spm(slic, slic);
+    std::cout << "check2" << std::endl;
+    spm.computeANNs();
+    std::cout << "done" << std::endl;
 
 	waitKey(0);
 	return 0;

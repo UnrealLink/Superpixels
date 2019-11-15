@@ -17,14 +17,21 @@ class SuperPatchMatcher{
         Slic& superpixels1;
         Slic& superpixels2;
         int degree;
+        int maxIter = 10;
 
         vector<int> ANNs;
-        vector<int> orderedCentroids;
-        vector<vector<int> > neighbours;
-        vector<vector<float> > neighboursAngle;
+        vector<int> countMatchings;
+        vector<int> orderedCentroids1;
+        vector<vector<int> > neighbours1;
+        vector<vector<float> > neighboursAngle1;
+        vector<int> orderedCentroids2;
+        vector<vector<int> > neighbours2;
+        vector<vector<float> > neighboursAngle2;
 
         void initRandomANNs();
-        void computeOrderAndNeighbours();
+        void computeOrderAndNeighbours(Slic superpixels, vector<int>& orderedCentroids, 
+                                       vector<vector<int> >& neighbours, 
+                                       vector<vector<float> >& neighboursAngle);
         void propagate();
         void randomSearch();
 
