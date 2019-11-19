@@ -20,6 +20,7 @@ class SuperPatchMatcher{
         int maxIter = 10;
 
         vector<int> ANNs;
+        vector<list<int> > reverseANNs;
         vector<int> countMatchings;
         vector<int> orderedCentroids1;
         vector<vector<int> > neighbours1;

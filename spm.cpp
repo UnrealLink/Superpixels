@@ -8,6 +8,7 @@ SuperPatchMatcher::SuperPatchMatcher(Slic& _superpixels1, Slic& _superpixels2, i
 {
     degree = _degree;
     ANNs = vector<int>(superpixels1.getNbSuperpixels(), 0);
+    reverseANNs = vector<list<int> >(superpixels2.getNbSuperpixels());
 }
 
 void SuperPatchMatcher::computeANNs(){
@@ -32,6 +33,7 @@ void SuperPatchMatcher::initRandomANNs(){
            ANNs[i] = rand() % m; 
         }
         countMatchings[ANNs[i]]++;
+        reverseANNs[ANNs[i]].push_back(i);
     }
 }
 
@@ -119,14 +121,15 @@ void SuperPatchMatcher::propagate(){
     int current;
     vector<bool> seen(nbSuperpixels, false);
     for (int i=0; i < nbSuperpixels; i++){
-        current = orderedCentroids1[i];
+        current = orderedCentroids1[i]; // current index in unordered centroids list
         seen[current] = true;
         for (int j=0; j<neighbours1[current].size();j++) {
             int neighbour1 = neighbours1[current][j];
             float angle1 = neighboursAngle1[current][j];
             if (seen[neighbour1]) {
                 float minAngleDiff = atan(1)*8;
-                int idxMin = -1;
+                int idxMin;
+                // Finding neighbour of neighbour1 with the most similar orientation with current centroid
                 for (int k=0; k<neighbours2[ANNs[neighbour1]].size(); k++){
                     if (abs(neighboursAngle2[ANNs[neighbour1]][k] - angle1) < minAngleDiff) {
                         minAngleDiff = abs(neighboursAngle2[ANNs[neighbour1]][k] - angle1);
@@ -138,14 +141,33 @@ void SuperPatchMatcher::propagate(){
                 Centroid centroidCurrentMatch = superpixels2.getCentroids()[ANNs[current]];
                 Centroid centroidNewCandidate = superpixels2.getCentroids()[newCandidate];
                 if (countMatchings[newCandidate] >= degree){
-                    float cost = 0;
-                    cost += cieLabDist(centroid1, centroidNewCandidate) - cieLabDist(centroid1, centroidCurrentMatch);
-                    cost += cieLabDist(centroid1, centroidNewCandidate) - cieLabDist(centroid1, centroidCurrentMatch);
-                    // I need a reverse ANNs table to get which superpixels from image1 are match to newCandidate
+                    int swap;
+                    float cost = cieLabDist(centroid1, centroidNewCandidate) - cieLabDist(centroid1, centroidCurrentMatch);
+                    float minCost = cost + 1000000;
+                    float possibleCost;
+                    for (int possibleSwap : reverseANNs[newCandidate]){
+                        Centroid centroidPossibleSwap = superpixels2.getCentroids()[possibleSwap];
+                        possibleCost = cost + cieLabDist(centroidPossibleSwap, centroidCurrentMatch)
+                                            - cieLabDist(centroidPossibleSwap, centroidNewCandidate);
+                        if (possibleCost < minCost){
+                            minCost = possibleCost;
+                            swap = possibleSwap;
+                        }
+                    }
+                    if (minCost < 0){
+                        reverseANNs[ANNs[current]].remove(current);
+                        reverseANNs[newCandidate].remove(swap);
+                        ANNs[swap] = ANNs[current];
+                        reverseANNs[ANNs[current]].push_back(swap);
+                        ANNs[current] = newCandidate;
+                        reverseANNs[newCandidate].push_back(current);
+                    }
                 }
                 else {
                     if (cieLabDist(centroid1, centroidNewCandidate) < cieLabDist(centroid1, centroidCurrentMatch)){
+                        reverseANNs[ANNs[current]].remove(current);
                         ANNs[current] = newCandidate;
+                        reverseANNs[newCandidate].push_back(current);
                         countMatchings[newCandidate]++;
                     }
                 }

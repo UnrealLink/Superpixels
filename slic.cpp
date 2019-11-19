@@ -114,7 +114,7 @@ void moveToSeeds(vector<Centroid>& centroids, const Image<Vec3b>& imageLab, int 
 float cieLabDist(Centroid centroid1, Centroid centroid2){
     float d_lab = sqrt((centroid1.L - centroid2.L)*(centroid1.L - centroid2.L)
                         + (centroid1.a - centroid2.a)*(centroid1.a - centroid2.a)
-                        + (centroid1.b - centroid2.b])*(centroid1.b - centroid2.b));
+                        + (centroid1.b - centroid2.b)*(centroid1.b - centroid2.b));
     return d_lab;
 }
 
