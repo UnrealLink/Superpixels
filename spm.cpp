@@ -96,8 +96,13 @@ void SuperPatchMatcher::computeOrderAndNeighbours(Slic superpixels, vector<int>&
 
     // invert order vector (order -> label)
     orderedCentroids = vector<int>(nbSuperpixels, 0);
+    int offset = 0;
     for (int i=0; i < nbSuperpixels; i++){
         orderedCentroids[i] = std::distance(_orderedCentroids.begin(), std::find(_orderedCentroids.begin(), _orderedCentroids.end(), i));
+        if (orderedCentroids[i] == orderedCentroids.size()){
+            orderedCentroids[i] = std::distance(_orderedCentroids.begin(), std::find(_orderedCentroids.begin(), _orderedCentroids.end(), -1)) + offset;
+            offset++;
+        }
     }
 
     // Compute angle of every neighbours
@@ -122,13 +127,14 @@ void SuperPatchMatcher::propagate(){
     vector<bool> seen(nbSuperpixels, false);
     for (int i=0; i < nbSuperpixels; i++){
         current = orderedCentroids1[i]; // current index in unordered centroids list
+        std:cout << i << " : " << current << std::endl;
         seen[current] = true;
         for (int j=0; j<neighbours1[current].size();j++) {
             int neighbour1 = neighbours1[current][j];
             float angle1 = neighboursAngle1[current][j];
             if (seen[neighbour1]) {
                 float minAngleDiff = atan(1)*8;
-                int idxMin;
+                int idxMin = -1;
                 // Finding neighbour of neighbour1 with the most similar orientation with current centroid
                 for (int k=0; k<neighbours2[ANNs[neighbour1]].size(); k++){
                     if (abs(neighboursAngle2[ANNs[neighbour1]][k] - angle1) < minAngleDiff) {
@@ -136,6 +142,7 @@ void SuperPatchMatcher::propagate(){
                         idxMin = k;
                     }
                 }
+                if (idxMin == -1) continue;
                 int newCandidate = neighbours2[ANNs[neighbour1]][idxMin];
                 Centroid centroid1 = superpixels1.getCentroids()[current];
                 Centroid centroidCurrentMatch = superpixels2.getCentroids()[ANNs[current]];
