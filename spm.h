@@ -7,7 +7,7 @@
 
 class SuperPatchMatcher{
     public:
-        SuperPatchMatcher(Slic& _superpixels1, Slic& _superpixels2, int _degree=1);
+        SuperPatchMatcher(Slic& _superpixels1, Slic& _superpixels2, int _degree=3);
         ~SuperPatchMatcher(){};
 
         void computeANNs();

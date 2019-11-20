@@ -195,12 +195,12 @@ void SuperPatchMatcher::propagate(){
 }
 
 int SuperPatchMatcher::selectRandomSuperpixel(int d, int x, int y){
-    int xMin = std::min(x-d, 0);
-    int yMin = std::min(y-d, 0);
+    int xMin = std::max(x-d, 0);
+    int yMin = std::max(y-d, 0);
     int xMax = std::min(x+d, superpixels2.getImage().width());
     int yMax = std::min(y+d, superpixels2.getImage().height());
-    int xRand = (rand() - xMin) % (xMax - xMin);
-    int yRand = (rand() - yMin) % (yMax - yMin);
+    int xRand = rand() % (xMax - xMin) + xMin;
+    int yRand = rand() % (yMax - yMin) + yMin;
     return superpixels2.getSuperpixels()(xRand, yRand);
 }
 
