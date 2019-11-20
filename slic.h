@@ -15,7 +15,7 @@ class Slic{
         Slic(Image<Vec3b> _imageLab, int _k, float _m=10);
         ~Slic(){};
 
-        void showSuperpixels();
+        void showSuperpixels(string title);
 
         const Image<Vec3b>& getImage(){return imageLab;}
         const Image<int>& getSuperpixels(){return superpixels;}

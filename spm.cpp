@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <cmath>
+#include <opencv2/highgui/highgui.hpp>
 
 SuperPatchMatcher::SuperPatchMatcher(Slic& _superpixels1, Slic& _superpixels2, int _degree) : 
     superpixels1(_superpixels1), superpixels2(_superpixels2) 
@@ -16,9 +17,11 @@ void SuperPatchMatcher::computeANNs(){
     computeOrderAndNeighbours(superpixels1, orderedCentroids1, neighbours1, neighboursAngle1);
     computeOrderAndNeighbours(superpixels2, orderedCentroids2, neighbours2, neighboursAngle2);
     for (int i=0; i < maxIter; i++){
+        std::cout << "Etape " << i << std::endl;
         propagate();
         randomSearch();
     }
+    showMatchs();
 }
 
 void SuperPatchMatcher::initRandomANNs(){
@@ -121,24 +124,32 @@ void SuperPatchMatcher::computeOrderAndNeighbours(Slic superpixels, vector<int>&
 
 }
 
+int sgn(float x){
+    if (x < 0) return -1;
+    return 1;
+}
+
 void SuperPatchMatcher::propagate(){
     int nbSuperpixels = superpixels1.getNbSuperpixels();
     int current;
     vector<bool> seen(nbSuperpixels, false);
     for (int i=0; i < nbSuperpixels; i++){
         current = orderedCentroids1[i]; // current index in unordered centroids list
-        std:cout << i << " : " << current << std::endl;
         seen[current] = true;
         for (int j=0; j<neighbours1[current].size();j++) {
             int neighbour1 = neighbours1[current][j];
-            float angle1 = neighboursAngle1[current][j];
             if (seen[neighbour1]) {
+                float angle1 = neighboursAngle1[current][j];
                 float minAngleDiff = atan(1)*8;
                 int idxMin = -1;
                 // Finding neighbour of neighbour1 with the most similar orientation with current centroid
                 for (int k=0; k<neighbours2[ANNs[neighbour1]].size(); k++){
-                    if (abs(neighboursAngle2[ANNs[neighbour1]][k] - angle1) < minAngleDiff) {
-                        minAngleDiff = abs(neighboursAngle2[ANNs[neighbour1]][k] - angle1);
+                    float angleDiff = abs(neighboursAngle2[ANNs[neighbour1]][k] 
+                                    - sgn(neighboursAngle2[ANNs[neighbour1]][k])*atan(1)*4 
+                                    - angle1);
+                    if (angleDiff > atan(1)*4) angleDiff = atan(1)*8 - angleDiff;
+                    if (angleDiff < minAngleDiff) {
+                        minAngleDiff = angleDiff;
                         idxMin = k;
                     }
                 }
@@ -153,7 +164,7 @@ void SuperPatchMatcher::propagate(){
                     float minCost = cost + 1000000;
                     float possibleCost;
                     for (int possibleSwap : reverseANNs[newCandidate]){
-                        Centroid centroidPossibleSwap = superpixels2.getCentroids()[possibleSwap];
+                        Centroid centroidPossibleSwap = superpixels1.getCentroids()[possibleSwap];
                         possibleCost = cost + cieLabDist(centroidPossibleSwap, centroidCurrentMatch)
                                             - cieLabDist(centroidPossibleSwap, centroidNewCandidate);
                         if (possibleCost < minCost){
@@ -183,7 +194,75 @@ void SuperPatchMatcher::propagate(){
     }
 }
 
-void SuperPatchMatcher::randomSearch(){
-       
+int SuperPatchMatcher::selectRandomSuperpixel(int d, int x, int y){
+    int xMin = std::min(x-d, 0);
+    int yMin = std::min(y-d, 0);
+    int xMax = std::min(x+d, superpixels2.getImage().width());
+    int yMax = std::min(y+d, superpixels2.getImage().height());
+    int xRand = (rand() - xMin) % (xMax - xMin);
+    int yRand = (rand() - yMin) % (yMax - yMin);
+    return superpixels2.getSuperpixels()(xRand, yRand);
+}
 
+void SuperPatchMatcher::randomSearch(){
+    for (int i=0; i<superpixels1.getNbSuperpixels(); i++){
+        int current = orderedCentroids1[i];
+        Centroid centroid1 = superpixels1.getCentroids()[current];
+        int d = std::max(superpixels1.getImage().width(), superpixels1.getImage().height())/2;
+        while (d > 2){
+            Centroid centroidCurrentMatch = superpixels2.getCentroids()[ANNs[current]];
+            int newCandidate = selectRandomSuperpixel(d, (int)centroidCurrentMatch.x, (int)centroidCurrentMatch.y);
+            Centroid centroidNewCandidate = superpixels2.getCentroids()[newCandidate];
+            if (countMatchings[newCandidate] >= degree){
+                int swap;
+                float cost = cieLabDist(centroid1, centroidNewCandidate) - cieLabDist(centroid1, centroidCurrentMatch);
+                float minCost = cost + 1000000;
+                float possibleCost;
+                for (int possibleSwap : reverseANNs[newCandidate]){
+                    Centroid centroidPossibleSwap = superpixels1.getCentroids()[possibleSwap];
+                    possibleCost = cost + cieLabDist(centroidPossibleSwap, centroidCurrentMatch)
+                                        - cieLabDist(centroidPossibleSwap, centroidNewCandidate);
+                    if (possibleCost < minCost){
+                        minCost = possibleCost;
+                        swap = possibleSwap;
+                    }
+                }
+                if (minCost < 0){
+                    reverseANNs[ANNs[current]].remove(current);
+                    reverseANNs[newCandidate].remove(swap);
+                    ANNs[swap] = ANNs[current];
+                    reverseANNs[ANNs[current]].push_back(swap);
+                    ANNs[current] = newCandidate;
+                    reverseANNs[newCandidate].push_back(current);
+                }
+            }
+            else {
+                if (cieLabDist(centroid1, centroidNewCandidate) < cieLabDist(centroid1, centroidCurrentMatch)){
+                    reverseANNs[ANNs[current]].remove(current);
+                    ANNs[current] = newCandidate;
+                    reverseANNs[newCandidate].push_back(current);
+                    countMatchings[newCandidate]++;
+                }
+            }
+            d = d/2;
+        }
+    }
+}
+
+void SuperPatchMatcher::showMatchs() {
+    int w = superpixels1.getImage().width();
+    int h = superpixels1.getImage().height();
+    Image<Vec3b> I(w, h);
+
+    for (int x = 0; x < w; x++) {
+        for (int y = 0; y < h; y++) {
+            int i = superpixels1.getSuperpixels()(x, y);
+            I(x, y)[0] = superpixels2.getCentroids()[ANNs[i]].L;
+            I(x, y)[1] = superpixels2.getCentroids()[ANNs[i]].a;
+            I(x, y)[2] = superpixels2.getCentroids()[ANNs[i]].b;
+        }
+    }
+
+    cvtColor(I, I, COLOR_Lab2BGR);
+    imshow("ANNs", I);
 }

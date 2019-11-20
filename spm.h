@@ -7,11 +7,12 @@
 
 class SuperPatchMatcher{
     public:
-        SuperPatchMatcher(Slic& _superpixels1, Slic& _superpixels2, int _degree=3);
+        SuperPatchMatcher(Slic& _superpixels1, Slic& _superpixels2, int _degree=1);
         ~SuperPatchMatcher(){};
 
         void computeANNs();
         vector<int> getANNs();
+        void showMatchs();
 
     private:
         Slic& superpixels1;
@@ -35,5 +36,6 @@ class SuperPatchMatcher{
                                        vector<vector<float> >& neighboursAngle);
         void propagate();
         void randomSearch();
+        int selectRandomSuperpixel(int d, int x, int y);
 
 };
