@@ -275,7 +275,6 @@ void enforceConnectivity(Image<int>& superpixels, const vector<Centroid>& centro
             }
         }
     }
-    imshow("seen", 255 * seen);
 
     // relabel remaining disjoint segments
     int n_remaining = k+1;
@@ -353,7 +352,7 @@ Slic::Slic(Image<Vec3b> _imageLab, int _k, float _m){
     enforceConnectivity(superpixels, centroids, imageLab, m);
 }
 
-void Slic::showSuperpixels() {
+void Slic::showSuperpixels(string title) {
     int w = imageLab.width();
     int h = imageLab.height();
     Image<Vec3b> I(w, h);
@@ -375,5 +374,5 @@ void Slic::showSuperpixels() {
     }
 
     cvtColor(I, I, COLOR_Lab2BGR);
-    imshow("superpixels", I);
+    imshow(title, I);
 }
