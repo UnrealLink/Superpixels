@@ -92,43 +92,49 @@ void ColorFusion::computeCovs() {
 void ColorFusion::computeTransferImage() {
     int w = transferImage.width();
     int h = transferImage.height();
-    int k = slic1.getNbSuperpixels();
 
     for (int x = 0; x < w; x++) {
         for (int y = 0; y < h; y++) {
-            vector<float> distances(k, 0.);
-            for (int i = 0; i < k; i++) {
+            int i = slic1.getSuperpixels()(x, y);
+            vector<int> neighbours = spm.getNeighbours(i);
+            neighbours.push_back(i);
+            int kn = neighbours.size();
+
+            vector<float> distances(kn, 0.);
+            for (int j = 0; j < kn; j++) {
                 // compute 5D vector corresponding to the difference between current pixel and current superpixel
-                float x_diff = ((float)x - slic1.getCentroids()[i].x) / w;
-                float y_diff = ((float)y - slic1.getCentroids()[i].y) / h;
-                float L_diff = ((float)slic1.getImage()(x, y)[0] - slic1.getCentroids()[i].L) / 255;
-                float a_diff = ((float)slic1.getImage()(x, y)[1] - slic1.getCentroids()[i].a) / 255;
-                float b_diff = ((float)slic1.getImage()(x, y)[2] - slic1.getCentroids()[i].b) / 255;
+                float x_diff = ((float)x - slic1.getCentroids()[neighbours[j]].x) / w;
+                float y_diff = ((float)y - slic1.getCentroids()[neighbours[j]].y) / h;
+                float L_diff = ((float)slic1.getImage()(x, y)[0] - slic1.getCentroids()[neighbours[j]].L) / 255;
+                float a_diff = ((float)slic1.getImage()(x, y)[1] - slic1.getCentroids()[neighbours[j]].a) / 255;
+                float b_diff = ((float)slic1.getImage()(x, y)[2] - slic1.getCentroids()[neighbours[j]].b) / 255;
                 Vec2f pos(x_diff, y_diff);
                 Vec3f color(L_diff, a_diff, b_diff);
 
                 // compute distance in xylab space with respect to covariance
-                distances[i] += pos.dot(spatial_cov[i] * pos);
-                distances[i] += color.dot(color_cov[i] * color);
+                distances[j] += pos.dot(spatial_cov[i] * pos);
+                distances[j] += color.dot(color_cov[i] * color);
             }
 
             // compute weights
             float sigma = *min_element(begin(distances), end(distances));
-            vector<float> weights(k);
+            vector<float> weights(kn);
             float total_weights = 0.;
-            for (int i = 0; i < k; i++) {
-                weights[i] = exp((-1) * (distances[i] - sigma));
-                total_weights += weights[i];
+            for (int j = 0; j < kn; j++) {
+                weights[j] = exp((-1) * (distances[j] - sigma));
+                total_weights += weights[j];
             }
 
             // color transfer
             Vec3f new_color(0., 0., 0.);
-            for (int i = 0; i < k; i++) {
-                Vec3f cur_color(slic2.getCentroids()[spm.getANNs()[i]].L, slic2.getCentroids()[spm.getANNs()[i]].a, slic2.getCentroids()[spm.getANNs()[i]].b);
-                new_color += weights[i]*cur_color;
+            for (int j = 0; j < kn; j++) {
+                Vec3f cur_color(slic2.getCentroids()[spm.getANNs()[neighbours[j]]].L,
+                                slic2.getCentroids()[spm.getANNs()[neighbours[j]]].a,
+                                slic2.getCentroids()[spm.getANNs()[neighbours[j]]].b);
+                new_color += weights[j]*cur_color;
             }
             new_color /= total_weights;
-            if (x % 50 == 0 && y % 50 == 0) { cout << new_color << endl; }
+
             for (int j = 0; j < 3; j++) {
                 transferImage(x, y)[j] = (int)new_color[j];
             }
