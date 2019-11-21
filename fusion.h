@@ -1,12 +1,15 @@
 #pragma once
 
 #include "image.h"
-#incude "slic.h"
+#include "slic.h"
 #include "spm.h"
+
+#include <opencv2/highgui/highgui.hpp>
+#include <vector>
 
 class ColorFusion{
     public:
-        ColorFusion(const Slic &_slic1, const Slic &_slic2, const SuperPatchMatcher &_spm, float _delta_c = 0.1, float _delta_s = 10.);
+        ColorFusion(Slic &_slic1, Slic &_slic2, SuperPatchMatcher &_spm, float _delta_c = 0.1, float _delta_s = 10.);
         ~ColorFusion(){};
 
         void showTransferImage();
@@ -18,5 +21,10 @@ class ColorFusion{
         float delta_c;
         float delta_s;
 
+        vector<Matx22f> spatial_cov;
+        vector<Matx33f> color_cov;
         Image<Vec3b> transferImage;
+
+        void computeCovs();
+        void computeTransferImage();
 };

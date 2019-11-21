@@ -11,7 +11,7 @@ class SuperPatchMatcher{
         ~SuperPatchMatcher(){};
 
         void computeANNs();
-        vector<int> getANNs();
+        vector<int> getANNs(){ return ANNs; }
         void showMatchs();
 
     private:
@@ -31,8 +31,8 @@ class SuperPatchMatcher{
         vector<vector<float> > neighboursAngle2;
 
         void initRandomANNs();
-        void computeOrderAndNeighbours(Slic superpixels, vector<int>& orderedCentroids, 
-                                       vector<vector<int> >& neighbours, 
+        void computeOrderAndNeighbours(Slic superpixels, vector<int>& orderedCentroids,
+                                       vector<vector<int> >& neighbours,
                                        vector<vector<float> >& neighboursAngle);
         void propagate();
         void randomSearch();
