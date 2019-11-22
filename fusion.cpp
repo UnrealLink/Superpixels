@@ -4,6 +4,7 @@
 #include <math.h>
 #include <iterator>
 #include <algorithm>
+#include <queue>
 
 using namespace std;
 using namespace cv;
@@ -86,28 +87,58 @@ void ColorFusion::computeCovs() {
 
 /*
     Color transfer.
-    For each pixel, compute k weights to take into account the distance to each superpixel centroid.
+    For each pixel, compute kn weights to take into account the distance to the neighbouring superpixels.
 */
+
+vector<int> ColorFusion::getNeighborhood(int i, vector<vector<int> > &neighbours, int radius) {
+    vector<int> neighborhood;
+    
+    int k = slic1.getNbSuperpixels();
+    vector<bool> seen(k, false);
+    vector<int> dist(k);
+    queue<int> Q;
+    
+    Q.push(i);
+    seen[i] = true;
+    dist[i] = 0;
+    while (!Q.empty()) {
+        int s = Q.front();
+        Q.pop();
+        neighborhood.push_back(s);
+        // s in on the border of the ball (in the graph space)
+        if (dist[s] == radius) continue;
+        // s in the open ball
+        for (vector<int>::iterator it = neighbours[s].begin(); it != neighbours[s].end(); it++) {
+            if (seen[*it]) continue;
+            seen[*it] = true;
+            dist[*it] = dist[s] + 1;
+            Q.push(*it);
+        }
+    }
+    
+    return neighborhood;
+}
 
 void ColorFusion::computeTransferImage() {
     int w = transferImage.width();
     int h = transferImage.height();
+    vector<vector<int> > neighbours = spm.getNeighbours();
 
     for (int x = 0; x < w; x++) {
         for (int y = 0; y < h; y++) {
+            // get superpixel's neighborhood
             int i = slic1.getSuperpixels()(x, y);
-            vector<int> neighbours = spm.getNeighbours(i);
-            neighbours.push_back(i);
-            int kn = neighbours.size();
+            vector<int> neighborhood = getNeighborhood(i, neighbours);
+            int kn = neighborhood.size();
 
             vector<float> distances(kn, 0.);
             for (int j = 0; j < kn; j++) {
                 // compute 5D vector corresponding to the difference between current pixel and current superpixel
-                float x_diff = ((float)x - slic1.getCentroids()[neighbours[j]].x) / w;
-                float y_diff = ((float)y - slic1.getCentroids()[neighbours[j]].y) / h;
-                float L_diff = ((float)slic1.getImage()(x, y)[0] - slic1.getCentroids()[neighbours[j]].L) / 255;
-                float a_diff = ((float)slic1.getImage()(x, y)[1] - slic1.getCentroids()[neighbours[j]].a) / 255;
-                float b_diff = ((float)slic1.getImage()(x, y)[2] - slic1.getCentroids()[neighbours[j]].b) / 255;
+                float x_diff = ((float)x - slic1.getCentroids()[neighborhood[j]].x) / w;
+                float y_diff = ((float)y - slic1.getCentroids()[neighborhood[j]].y) / h;
+                float L_diff = ((float)slic1.getImage()(x, y)[0] - slic1.getCentroids()[neighborhood[j]].L) / 255;
+                float a_diff = ((float)slic1.getImage()(x, y)[1] - slic1.getCentroids()[neighborhood[j]].a) / 255;
+                float b_diff = ((float)slic1.getImage()(x, y)[2] - slic1.getCentroids()[neighborhood[j]].b) / 255;
                 Vec2f pos(x_diff, y_diff);
                 Vec3f color(L_diff, a_diff, b_diff);
 
@@ -117,7 +148,7 @@ void ColorFusion::computeTransferImage() {
             }
 
             // compute weights
-            float sigma = *min_element(begin(distances), end(distances));
+            float sigma = *min_element(distances.begin(), distances.end());
             vector<float> weights(kn);
             float total_weights = 0.;
             for (int j = 0; j < kn; j++) {
@@ -128,9 +159,9 @@ void ColorFusion::computeTransferImage() {
             // color transfer
             Vec3f new_color(0., 0., 0.);
             for (int j = 0; j < kn; j++) {
-                Vec3f cur_color(slic2.getCentroids()[spm.getANNs()[neighbours[j]]].L,
-                                slic2.getCentroids()[spm.getANNs()[neighbours[j]]].a,
-                                slic2.getCentroids()[spm.getANNs()[neighbours[j]]].b);
+                Vec3f cur_color(slic2.getCentroids()[spm.getANNs()[neighborhood[j]]].L,
+                                slic2.getCentroids()[spm.getANNs()[neighborhood[j]]].a,
+                                slic2.getCentroids()[spm.getANNs()[neighborhood[j]]].b);
                 new_color += weights[j]*cur_color;
             }
             new_color /= total_weights;

@@ -16,8 +16,8 @@ int main(int argc, char** argv)
     Image<Vec3b> colorPalette;
 
     if (argc < 2) {
-        image = (Image<Vec3b>)imread("../data/macareux.jpg");
-        colorPalette = (Image<Vec3b>)imread("../data/simple_color_palette.png");
+        image = (Image<Vec3b>)imread("../data/loic.jpg");
+        colorPalette = (Image<Vec3b>)imread("../data/fruits.jpg");
     }
     else {
         image = (Image<Vec3b>)imread(argv[1]);
@@ -34,7 +34,7 @@ int main(int argc, char** argv)
 
     imshow("Color Palette", colorPalette);
     Image<Vec3b> colorPaletteLab = convertBGRToLab(colorPalette);
-    Slic slicColorPalette(colorPaletteLab, 500);
+    Slic slicColorPalette(colorPaletteLab, 1000);
     slicColorPalette.showSuperpixels("Color Palette Superpixels");
 
     SuperPatchMatcher spm(slicImage, slicColorPalette);

@@ -26,5 +26,6 @@ class ColorFusion{
         Image<Vec3b> transferImage;
 
         void computeCovs();
+        vector<int> getNeighborhood(int i, vector<vector<int> > &neighbours, int radius = 3);
         void computeTransferImage();
 };
