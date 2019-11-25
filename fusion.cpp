@@ -43,7 +43,7 @@ ColorFusion::ColorFusion(Slic &_slic1, Slic &_slic2, SuperPatchMatcher &_spm, fl
 */
 
 void ColorFusion::computeCovs() {
-    int w = slic1.getImage().height();
+    int w = slic1.getImage().width();
     int h = slic1.getImage().height();
     int k = slic1.getNbSuperpixels();
 
