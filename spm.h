@@ -12,7 +12,7 @@ class SuperPatchMatcher{
 
         void computeANNs();
         vector<int> getANNs(){ return ANNs; }
-        vector<vector<int> > getNeighbours(){ return neighbours1; };
+        vector<vector<int> >& getNeighbours(){ return neighbours1; };
         void showMatchs();
 
     private:
