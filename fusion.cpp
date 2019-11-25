@@ -80,8 +80,8 @@ void ColorFusion::computeCovs() {
 
     // relative importance factor between spatial and color distribution
     for (int i = 0; i < k; i++) {
-        spatial_cov[i] = spatial_cov[i].inv();
-        color_cov[i] = color_cov[i].inv();
+        spatial_cov[i] = (spatial_cov[i] + 0.001*Matx22f::eye()).inv();
+        color_cov[i] = (color_cov[i] + 0.001*Matx33f::eye()).inv();
     }
 }
 
