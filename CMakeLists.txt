@@ -1,11 +1,10 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+cmake_minimum_required(VERSION 2.6)
 
-SET(OpenCV_STATIC OFF)
-FIND_PACKAGE(OpenCV REQUIRED)
-INCLUDE_DIRECTORIES(${OpenCV_INCLUDE_DIRS})
+# project configuration
+project(Superpixels)
 
-PROJECT(SLIC)
+add_subdirectory(src)
+add_subdirectory(apps)
 
-SET(CMAKE_CXX_FLAGS "-g")
-ADD_EXECUTABLE(slic main.cpp slic.cpp slic.h cielab.cpp cielab.h image.cpp image.h spm.h spm.cpp fusion.h fusion.cpp)
-TARGET_LINK_LIBRARIES(slic ${OpenCV_LIBS})
+set(CMAKE_CXX_FLAGS "-g")
+
