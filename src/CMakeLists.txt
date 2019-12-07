@@ -3,9 +3,16 @@ set(OpenCV_STATIC OFF)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+# library
+file(
+	GLOB
+	src_files
+	*.cpp
+)
+
 add_library(utils
 	SHARED
-	cielab.cpp fusion.cpp image.cpp slic.cpp spm.cpp)
+	${src_files})
 
 target_link_libraries(utils ${OpenCV_LIBS})
 

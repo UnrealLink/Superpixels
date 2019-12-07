@@ -5,6 +5,7 @@ project(Superpixels)
 
 add_subdirectory(src)
 add_subdirectory(apps)
+add_subdirectory(gui)
 
 set(CMAKE_CXX_FLAGS "-g")
 
