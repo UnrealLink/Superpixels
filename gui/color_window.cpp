@@ -27,37 +27,27 @@ bool ColorPatch::on_draw(const Cairo::RefPtr<Cairo::Context>& cr){
    ColorWindow
 */
 
-ColorWindow::ColorWindow() {
-    // window
-    resize(200, 300);
-
-    // box
-    vbox = new Gtk::VBox(false, 10);
-
+ColorWindow::ColorWindow() : VBox(false, 10)
+{
     // sliders
     scaleR = new Gtk::HScale(0, 256, 1);
-    vbox->pack_start(*scaleR);
+    pack_start(*scaleR);
     scaleR->signal_value_changed().connect([this]() {updateColor();});
     
     scaleG = new Gtk::HScale(0, 256, 1);
-    vbox->pack_start(*scaleG);
+    pack_start(*scaleG);
     scaleG->signal_value_changed().connect([this]() {updateColor();});
     
     scaleB = new Gtk::HScale(0, 256, 1);
-    vbox->pack_start(*scaleB);
+    pack_start(*scaleB);
     scaleB->signal_value_changed().connect([this]() {updateColor();});
 
     // color patch
     patch = new ColorPatch();
-    vbox->pack_start(*patch);
-
-    // display
-    add(*vbox);
-    show_all();
+    pack_start(*patch);
 }
 
 ColorWindow::~ColorWindow(){
-    delete vbox;
     delete scaleR;
     delete scaleG;
     delete scaleB;

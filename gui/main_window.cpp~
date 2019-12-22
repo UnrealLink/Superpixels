@@ -1,0 +1,24 @@
+#include "main_window.h"
+
+
+MainWindow::MainWindow(std::string filename) {
+    resize(1200, 1000);
+    
+    hbox = new Gtk::HBox(true);
+    
+    imgArea = new ImageArea();
+    imgArea->load_image(filename);
+    hbox->pack_start(*imgArea);
+    
+    colorWin = new ColorWindow();
+    hbox->pack_start(*imgArea);
+
+    add(*hbox);
+    show_all();
+}
+
+MainWindow::~MainWindow(){
+    delete hbox;
+    delete imgArea;
+    delete colorWin;
+}

@@ -8,6 +8,10 @@ endif()
 
 include_directories(${GTKMM_INCLUDE_DIRS})
 
+
+# utils
+include_directories(${CMAKE_SOURCE_DIR}/src)
+
 # library
 file(
 	GLOB
@@ -19,7 +23,7 @@ add_library(my_gui
 	SHARED
 	${src_files})
 
-target_link_libraries(my_gui ${GTKMM_LIBRARIES})
+target_link_libraries(my_gui ${GTKMM_LIBRARIES} utils ${OpenCV_LIBS})
 
 install(TARGETS my_gui
 	DESTINATION lib)

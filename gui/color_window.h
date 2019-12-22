@@ -1,6 +1,5 @@
 #pragma once
 
-#include <gtkmm/window.h>
 #include <gtkmm/box.h>
 #include <gtkmm/scale.h>
 
@@ -24,7 +23,7 @@ class ColorPatch : public Gtk::DrawingArea {
 };
 
 
-class ColorWindow : public Gtk::Window {
+class ColorWindow : public Gtk::VBox {
  public:
     ColorWindow();
     ~ColorWindow();
@@ -35,9 +34,6 @@ class ColorWindow : public Gtk::Window {
     double getB(){ return scaleB->get_value(); }
 
  private:
-    // vertical box for display
-    Gtk::VBox* vbox;
-
     // RGB sliders
     Gtk::HScale* scaleR;
     Gtk::HScale* scaleG;
