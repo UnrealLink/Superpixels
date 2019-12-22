@@ -1,6 +1,7 @@
 #include "image_area.h"
 
 #include <cassert>
+#include <iostream>
 
 #include <gdkmm/general.h>
 

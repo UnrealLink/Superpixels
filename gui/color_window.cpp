@@ -1,5 +1,6 @@
 #include "color_window.h"
 
+
 /*
   ColorPatch
 */
@@ -45,6 +46,7 @@ ColorWindow::ColorWindow() : VBox(false, 10)
     // color patch
     patch = new ColorPatch();
     pack_start(*patch);
+
 }
 
 ColorWindow::~ColorWindow(){

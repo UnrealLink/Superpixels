@@ -18,9 +18,14 @@ class Slic{
         void showSuperpixels(string title);
 
         const Image<Vec3b>& getImage(){return imageLab;}
+	
         const Image<int>& getSuperpixels(){return superpixels;}
+	int getCluster(int x, int y){return superpixels(x, y);}
+	
         int getNbSuperpixels(){return k;}
+	
         const vector<Centroid>& getCentroids(){return centroids;}
+	Centroid getCentroid(int i){return centroids[i];}
 
     private:
         Image<Vec3b> imageLab;

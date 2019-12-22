@@ -6,6 +6,7 @@
 #include <gtkmm/box.h>
 
 #include "image.h"
+#include "slic.h"
 
 #include "image_area.h"
 #include "color_window.h"
@@ -19,8 +20,11 @@ class MainWindow : public Gtk::Window {
     ~MainWindow();
 
  private:
+    Slic* slic;
     Gtk::HBox* hbox;
     ImageArea* imgArea;
     ColorWindow* colorWin;
+
+    void update_cluster_color();
     
 };
