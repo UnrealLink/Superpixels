@@ -13,16 +13,19 @@ using namespace cv;
     Initialization and computation of covariance matrices, weights and transfered colors.
 */
 
-ColorFusion::ColorFusion(Slic &_slic1, Slic &_slic2, SuperPatchMatcher &_spm, float _delta_c, float _delta_s) :
+ColorFusion::ColorFusion(Slic *_slic1, Slic *_slic2, SuperPatchMatcher *_spm, float _delta_c, float _delta_s) :
     slic1(_slic1), slic2(_slic2), spm(_spm)
 {
     cout << "Entering color fusion..." << endl;
+    slic1 = _slic1;
+    slic2 = _slic2;
+    spm = _spm;
     delta_c = _delta_c;
     delta_s = _delta_s;
 
-    int w = slic1.getImage().width();
-    int h = slic1.getImage().height();
-    int k = slic1.getNbSuperpixels();
+    int w = slic1->getImage().width();
+    int h = slic1->getImage().height();
+    int k = slic1->getNbSuperpixels();
 
     spatial_cov = vector<Matx22f>(k);
     color_cov = vector<Matx33f>(k);
@@ -34,29 +37,59 @@ ColorFusion::ColorFusion(Slic &_slic1, Slic &_slic2, SuperPatchMatcher &_spm, fl
     cout << "Covariances : done" << endl;
 
     transferImage = Image<Vec3b>(w, h);
+    computeMatchedColorsFromSpm();
+    computeNeighboursFromSpm();
     computeTransferImage();
     cout << "Transfer image : done" << endl;
 }
+
+ColorFusion::ColorFusion(Slic *_slic, Coloring* _coloring, float _delta_c, float _delta_s){
+    cout << "Entering color fusion..." << endl;
+    slic1 = _slic;
+    coloring = _coloring;
+    delta_c = _delta_c;
+    delta_s = _delta_s;
+
+    int w = slic1->getImage().width();
+    int h = slic1->getImage().height();
+    int k = slic1->getNbSuperpixels();
+
+    spatial_cov = vector<Matx22f>(k);
+    color_cov = vector<Matx33f>(k);
+    for (int i = 0; i < k; i++) {
+        spatial_cov[i] = Matx22f::zeros();
+        color_cov[i] = Matx33f::zeros();
+    }
+    computeCovs();
+    cout << "Covariances : done" << endl;
+
+    transferImage = Image<Vec3b>(w, h);
+    computeMatchedColorsFromColoring();
+    computeNeighboursFromColoring();
+    computeTransferImage();
+    cout << "Fused image : done" << endl;
+}
+
 
 /*
     Spatial and colorimetric covariance of superpixels in image A.
 */
 
 void ColorFusion::computeCovs() {
-    int w = slic1.getImage().width();
-    int h = slic1.getImage().height();
-    int k = slic1.getNbSuperpixels();
+    int w = slic1->getImage().width();
+    int h = slic1->getImage().height();
+    int k = slic1->getNbSuperpixels();
 
     for (int x = 0; x < w; x++) {
         for (int y = 0; y < h; y++) {
-            int i = slic1.getSuperpixels()(x, y);
+            int i = slic1->getSuperpixels()(x, y);
 
             // center and normalize 5D vector correponding to current pixel
-            float x_norm = ((float)x - slic1.getCentroids()[i].x) / w;
-            float y_norm = ((float)y - slic1.getCentroids()[i].y) / h;
-            float L_norm = ((float)slic1.getImage()(x, y)[0] - slic1.getCentroids()[i].L) / 255;
-            float a_norm = ((float)slic1.getImage()(x, y)[1] - slic1.getCentroids()[i].a) / 255;
-            float b_norm = ((float)slic1.getImage()(x, y)[2] - slic1.getCentroids()[i].b) / 255;
+            float x_norm = ((float)x - slic1->getCentroids()[i].x) / w;
+            float y_norm = ((float)y - slic1->getCentroids()[i].y) / h;
+            float L_norm = ((float)slic1->getImage()(x, y)[0] - slic1->getCentroids()[i].L) / 255;
+            float a_norm = ((float)slic1->getImage()(x, y)[1] - slic1->getCentroids()[i].a) / 255;
+            float b_norm = ((float)slic1->getImage()(x, y)[2] - slic1->getCentroids()[i].b) / 255;
             Vec2f pos(x_norm, y_norm);
             pos *= delta_s;
             Vec3f color(L_norm, a_norm, b_norm);
@@ -93,7 +126,7 @@ void ColorFusion::computeCovs() {
 vector<int> ColorFusion::getNeighborhood(int i, vector<vector<int> > &neighbours, int radius) {
     vector<int> neighborhood;
 
-    int k = slic1.getNbSuperpixels();
+    int k = slic1->getNbSuperpixels();
     vector<bool> seen(k, false);
     vector<int> depth(k);
     queue<int> Q;
@@ -119,34 +152,55 @@ vector<int> ColorFusion::getNeighborhood(int i, vector<vector<int> > &neighbours
     return neighborhood;
 }
 
-void ColorFusion::computeNeighbours(int radius) {
-    int k = slic1.getNbSuperpixels();
+void ColorFusion::computeNeighboursFromSpm(int radius) {
+    int k = slic1->getNbSuperpixels();
     neighbours = vector<vector<int> >(k);
     for (int i = 0; i < k; i++) {
-	neighbours[i] = getNeighborhood(i, spm.getNeighbours(), radius);
+	    neighbours[i] = getNeighborhood(i, spm->getNeighbours(), radius);
     }
+}
+
+void ColorFusion::computeNeighboursFromColoring(int radius) {
+    int k = slic1->getNbSuperpixels();
+    neighbours = vector<vector<int> >(k);
+    for (int i = 0; i < k; i++) {
+	    neighbours[i] = getNeighborhood(i, coloring->getNeighbours(), radius);
+    }
+}
+
+void ColorFusion::computeMatchedColorsFromSpm(){
+    int nb = slic1->getNbSuperpixels();
+    matchedColors = vector<Vec3b>(nb);
+    for (int i=0; i<nb; i++){
+        matchedColors[i] = Vec3b(slic2->getCentroids()[spm->getANNs()[i]].L,
+                                 slic2->getCentroids()[spm->getANNs()[i]].a,
+                                 slic2->getCentroids()[spm->getANNs()[i]].b);
+    }
+}
+
+void ColorFusion::computeMatchedColorsFromColoring(){
+    matchedColors = coloring->getNewColors();
 }
 
 void ColorFusion::computeTransferImage() {
     int w = transferImage.width();
     int h = transferImage.height();
-    computeNeighbours();
 
     for (int x = 0; x < w; x++) {
         for (int y = 0; y < h; y++) {
             // get superpixel's neighborhood
-            int i = slic1.getSuperpixels()(x, y);
+            int i = slic1->getSuperpixels()(x, y);
             vector<int> neighborhood = neighbours[i];
             int kn = neighborhood.size();
 
             vector<float> distances(kn, 0.);
             for (int j = 0; j < kn; j++) {
                 // compute 5D vector corresponding to the difference between current pixel and current superpixel
-                float x_diff = ((float)x - slic1.getCentroids()[neighborhood[j]].x) / w;
-                float y_diff = ((float)y - slic1.getCentroids()[neighborhood[j]].y) / h;
-                float L_diff = ((float)slic1.getImage()(x, y)[0] - slic1.getCentroids()[neighborhood[j]].L) / 255;
-                float a_diff = ((float)slic1.getImage()(x, y)[1] - slic1.getCentroids()[neighborhood[j]].a) / 255;
-                float b_diff = ((float)slic1.getImage()(x, y)[2] - slic1.getCentroids()[neighborhood[j]].b) / 255;
+                float x_diff = ((float)x - slic1->getCentroids()[neighborhood[j]].x) / w;
+                float y_diff = ((float)y - slic1->getCentroids()[neighborhood[j]].y) / h;
+                float L_diff = ((float)slic1->getImage()(x, y)[0] - slic1->getCentroids()[neighborhood[j]].L) / 255;
+                float a_diff = ((float)slic1->getImage()(x, y)[1] - slic1->getCentroids()[neighborhood[j]].a) / 255;
+                float b_diff = ((float)slic1->getImage()(x, y)[2] - slic1->getCentroids()[neighborhood[j]].b) / 255;
                 Vec2f pos(x_diff, y_diff);
                 Vec3f color(L_diff, a_diff, b_diff);
 
@@ -167,9 +221,7 @@ void ColorFusion::computeTransferImage() {
             // color transfer
             Vec3f new_color(0., 0., 0.);
             for (int j = 0; j < kn; j++) {
-                Vec3f cur_color(slic2.getCentroids()[spm.getANNs()[neighborhood[j]]].L,
-                                slic2.getCentroids()[spm.getANNs()[neighborhood[j]]].a,
-                                slic2.getCentroids()[spm.getANNs()[neighborhood[j]]].b);
+                Vec3f cur_color = matchedColors[neighborhood[j]];
                 new_color += weights[j]*cur_color;
             }
             new_color /= total_weights;
