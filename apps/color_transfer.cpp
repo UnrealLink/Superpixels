@@ -40,7 +40,7 @@ int main(int argc, char** argv)
     SuperPatchMatcher spm(slicImage, slicColorPalette);
     spm.computeANNs();
 
-    ColorFusion fusion(slicImage, slicColorPalette, spm);
+    ColorFusion fusion(&slicImage, &slicColorPalette, &spm);
     fusion.showTransferImage();
 
 	waitKey(0);
