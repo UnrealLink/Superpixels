@@ -118,9 +118,13 @@ void Coloring::solveAffinityMatrix(){
 
     newColors = vector<Vec3b>(nb);
     for (int i=0; i<nb; i++){
-        // std::cout << i << " " << U[i] << std::endl;
-        // std::cout << i << " " << V[i] << std::endl;
-        newColors[i] = Vec3b(clustersY[i], U[i], V[i]);
+        vector<int>::iterator it = std::find(filledClusters.begin(), filledClusters.end(), i);
+        if(it == filledClusters.end()) {
+            newColors[i] = Vec3b(clustersY[i], U[i], V[i]);
+        } else {
+            int j = distance(filledClusters.begin(), it);
+            newColors[i] = Vec3b(colors[j][0], U[i], V[i]);
+        }
     }
 }
 
